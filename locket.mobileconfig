@@ -1,109 +1,44 @@
-"""
-PhamKhoi🐹🐭 - Locket Gold DNS Profile Generator (Zalo: 0858868958)
-=====================================================
-Script này tạo ra file locket_gold.mobileconfig để ném lên Github Pages (không phải Raw).
-Bao gồm cấu hình DNS Proxy và Root CA để bắt tay SSL (MITM).
-"""
-
-import base64
-
-# ==========================================
-# CẢNH BÁO: BẠN CẦN TỰ TẠO 1 CÁI CHỨNG CHỈ ROOT CA (.cer hoặc .crt)
-# Sau đó mã hóa Base64 nội dung file đó và dán vào đây.
-# Nếu không có, iOS sẽ không cho phép MITM (giải mã HTTPS).
-# ==========================================
-# Dưới đây là mã Base64 giả lập (Bạn phải thay bằng cert thật của bạn)
-ROOT_CA_BASE64 = """
-MIIF... (Base64 c?a file .cer c?a b?n) ... 
-"""
-
-# IP của Server DNS Proxy (Server của bạn chạy script fake API Locket)
-DNS_SERVER_IP = "1.1.1.1" # S? d?ng t?m Cloudflare, n?u có server riêng thì thay vào
-
-MOBILECONFIG_TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
     <key>PayloadContent</key>
     <array>
-        <!-- 1. Cài đặt Root CA (Chứng chỉ) -->
-        <dict>
-            <key>PayloadCertificateFileName</key>
-            <string>locket_ca.cer</string>
-            <key>PayloadContent</key>
-            <data>
-                {ROOT_CA_BASE64}
-            </data>
-            <key>PayloadDescription</key>
-            <string>Locket Gold Root CA</string>
-            <key>PayloadDisplayName</key>
-            <string>Locket Gold CA</string>
-            <key>PayloadIdentifier</key>
-            <string>com.phamkhoi.locketgold.ca</string>
-            <key>PayloadType</key>
-            <string>com.apple.security.root</string>
-            <key>PayloadUUID</key>
-            <string>11111111-1111-1111-1111-111111111111</string>
-            <key>PayloadVersion</key>
-            <integer>1</integer>
-        </dict>
-        
-        <!-- 2. Cài đặt DNS Proxy (Trỏ traffic về Server của bạn) -->
+        <!-- Cấu hình DNS Proxy -->
         <dict>
             <key>PayloadDescription</key>
-            <string>Locket Gold DNS Proxy</string>
+            <string>Cấu hình DNS Proxy để kích hoạt Locket Gold</string>
             <key>PayloadDisplayName</key>
-            <string>Locket Gold Proxy</string>
+            <string>Locket Gold Free</string>
             <key>PayloadIdentifier</key>
             <string>com.phamkhoi.locketgold.dns</string>
             <key>PayloadType</key>
             <string>com.apple.dnsSettings.managed</string>
             <key>PayloadUUID</key>
-            <string>22222222-2222-2222-2222-222222222222</string>
+            <string>12345678-1234-1234-1234-1234567890AB</string>
             <key>PayloadVersion</key>
             <integer>1</integer>
             <key>DNSSettings</key>
             <dict>
                 <key>DNSProtocol</key>
                 <string>HTTPS</string>
+                <!-- Thay link Server MITM của ông vào đây (nếu có), dưới đây là DNS Cloudflare làm mẫu -->
                 <key>ServerURL</key>
-                <string>https://{DNS_SERVER_IP}/dns-query</string>
+                <string>https://1.1.1.1/dns-query</string>
             </dict>
         </dict>
     </array>
     <key>PayloadDisplayName</key>
-    <string>Locket Gold Free</string>
+    <string>Locket Gold Profile</string>
     <key>PayloadIdentifier</key>
     <string>com.phamkhoi.locketgold</string>
     <key>PayloadOrganization</key>
-    <string>PhamKhoi</string>
+    <string>PhamKhoi (Khoi Chuot Bach)</string>
     <key>PayloadType</key>
     <string>Configuration</string>
     <key>PayloadUUID</key>
-    <string>33333333-3333-3333-3333-333333333333</string>
+    <string>87654321-4321-4321-4321-BA0987654321</string>
     <key>PayloadVersion</key>
     <integer>1</integer>
 </dict>
 </plist>
-"""
-
-def generate_mobileconfig():
-    # Xóa khoảng trắng trong base64 nếu có
-    cert_clean = ROOT_CA_BASE64.replace("\n", "").replace(" ", "")
-    
-    # Điền vào template
-    content = MOBILECONFIG_TEMPLATE.format(
-        ROOT_CA_BASE64=cert_clean,
-        DNS_SERVER_IP=DNS_SERVER_IP
-    )
-    
-    # Lưu file
-    with open("locket_gold.mobileconfig", "w", encoding="utf-8") as f:
-        f.write(content)
-    
-    print("✅ Đã tạo thành công file: locket_gold.mobileconfig")
-    print("👉 Hướng dẫn: Đưa file này lên GitHub Pages (Đừng dùng Raw).")
-    print("👉 Trỏ link vào file này, mở bằng Safari trên iOS nó sẽ tự hiện Popup cài đặt.")
-
-if __name__ == "__main__":
-    generate_mobileconfig()
