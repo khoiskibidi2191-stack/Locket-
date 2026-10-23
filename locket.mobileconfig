@@ -1,42 +1,166 @@
-<?xml version="1.0" encoding="UTF-8"?>
+"""
+PhamKhoi🐹🐭 - Auto Generate CA & Mobileconfig (Zalo: 0858868958)
+=====================================================
+Tự động tạo Root CA tên "PhamKhoi", nhúng vào file mobileconfig và host local.
+Yêu cầu thư viện: cryptography (pip install cryptography)
+"""
+
+import http.server
+import socketserver
+import ssl
+import base64
+from cryptography import x509
+from cryptography.x509.oid import NameOID
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives import serialization
+import datetime
+
+PORT = 8080
+CERT_FILE = "phamkhoi_ca.cer"
+KEY_FILE = "phamkhoi_ca.key"
+
+def generate_ca():
+    print("🔐 Đang tạo Root CA (PhamKhoi CA)...")
+    # Tạo Private Key
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    
+    # Cấu hình thông tin Chứng chỉ
+    subject = issuer = x509.Name([
+        x509.NameAttribute(NameOID.COUNTRY_NAME, u"VN"),
+        x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, u"Ho Chi Minh"),
+        x509.NameAttribute(NameOID.ORGANIZATION_NAME, u"PhamKhoi Locket Gold"),
+        x509.NameAttribute(NameOID.COMMON_NAME, u"PhamKhoi CA"),
+    ])
+    
+    cert = x509.CertificateBuilder().subject_name(
+        subject
+    ).issuer_name(
+        issuer
+    ).public_key(
+        key.public_key()
+    ).serial_number(
+        x509.random_serial_number()
+    ).not_valid_before(
+        datetime.datetime.utcnow()
+    ).not_valid_after(
+        # Hạn 10 năm
+        datetime.datetime.utcnow() + datetime.timedelta(days=3650)
+    ).add_extension(
+        x509.BasicConstraints(ca=True, path_length=None), critical=True,
+    ).sign(key, hashes.SHA256())
+    
+    # Lưu file .cer
+    with open(CERT_FILE, "wb") as f:
+        f.write(cert.public_bytes(serialization.Encoding.DER))
+    
+    print(f"✅ Đã tạo chứng chỉ: {CERT_FILE}")
+    return cert.public_bytes(serialization.Encoding.DER)
+
+def generate_mobileconfig(cert_der):
+    print("📄 Đang tạo file locket.mobileconfig...")
+    # Mã hóa Base64 chứng chỉ
+    cert_b64 = base64.b64encode(cert_der).decode('utf-8')
+    
+    # Format lại chuỗi base64 cho đẹp (cách 64 ký tự)
+    cert_b64_formatted = "\n".join([cert_b64[i:i+64] for i in range(0, len(cert_b64), 64)])
+
+    mobileconfig = f"""<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
     <key>PayloadContent</key>
     <array>
+        <!-- 1. CHỨNG CHỈ PHAMKHOI CA -->
+        <dict>
+            <key>PayloadCertificateFileName</key>
+            <string>phamkhoi_ca.cer</string>
+            <key>PayloadContent</key>
+            <data>
+                {cert_b64_formatted}
+            </data>
+            <key>PayloadDescription</key>
+            <string>Chứng chỉ Root CA của PhamKhoi</string>
+            <key>PayloadDisplayName</key>
+            <string>PhamKhoi Locket CA</string>
+            <key>PayloadIdentifier</key>
+            <string>com.phamkhoi.locket.ca</string>
+            <key>PayloadType</key>
+            <string>com.apple.security.root</string>
+            <key>PayloadUUID</key>
+            <string>A1B2C3D4-E5F6-4321-8765-A1B2C3D4E5F6</string>
+            <key>PayloadVersion</key>
+            <integer>1</integer>
+        </dict>
+        
+        <!-- 2. CẤU HÌNH DNS PROXY -->
         <dict>
             <key>PayloadDescription</key>
-            <string>Cấu hình DNS Locket Gold</string>
+            <string>DNS Proxy cho PhamKhoi Locket Gold</string>
             <key>PayloadDisplayName</key>
-            <string>Locket Gold DNS</string>
+            <string>PhamKhoi DNS Proxy</string>
             <key>PayloadIdentifier</key>
-            <string>com.phamkhoi.locketgold.dns</string>
+            <string>com.phamkhoi.locket.dns</string>
             <key>PayloadType</key>
             <string>com.apple.dnsSettings.managed</string>
             <key>PayloadUUID</key>
-            <string>A1B2C3D4-E5F6-4321-8765-A1B2C3D4E5F6</string>
+            <string>F6E5D4C3-B2A1-4321-8765-F6E5D4C3B2A1</string>
             <key>PayloadVersion</key>
             <integer>1</integer>
             <key>DNSSettings</key>
             <dict>
                 <key>DNSProtocol</key>
                 <string>HTTPS</string>
+                <!-- THAY ĐỔI Ở ĐÂY: Nếu có VPS, đổi thành IP/Domain VPS của ông -->
                 <key>ServerURL</key>
                 <string>https://1.1.1.1/dns-query</string>
             </dict>
         </dict>
     </array>
     <key>PayloadDisplayName</key>
-    <string>Locket Gold Profile</string>
+    <string>PhamKhoi Locket Profile</string>
     <key>PayloadIdentifier</key>
-    <string>com.phamkhoi.locketgold</string>
+    <string>com.phamkhoi.locket</string>
     <key>PayloadOrganization</key>
-    <string>PhamKhoi</string>
+    <string>PhamKhoi (Khoi Chuot Bach)</string>
     <key>PayloadType</key>
     <string>Configuration</string>
     <key>PayloadUUID</key>
-    <string>F6E5D4C3-B2A1-4321-8765-F6E5D4C3B2A1</string>
+    <string>C3D4E5F6-A1B2-4321-8765-C3D4E5F6A1B2</string>
     <key>PayloadVersion</key>
     <integer>1</integer>
 </dict>
 </plist>
+"""
+    with open("locket.mobileconfig", "w", encoding="utf-8") as f:
+        f.write(mobileconfig)
+    print("✅ Đã tạo file: locket.mobileconfig")
+
+class Handler(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path.endswith('.mobileconfig'):
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/x-apple-aspen-config')
+            self.end_headers()
+            with open("locket.mobileconfig", "rb") as f:
+                self.wfile.write(f.read())
+        else:
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/html; charset=utf-8')
+            self.end_headers()
+            self.wfile.write(b"<h1>Chuyên trang Locket Gold c?a PhamKhoi</h1><p>Vui l?ng truy c?p /locket.mobileconfig</p>")
+
+if __name__ == "__main__":
+    try:
+        # 1. Tạo CA
+        cert_der = generate_ca()
+        # 2. Tạo mobileconfig
+        generate_mobileconfig(cert_der)
+        
+        # 3. Bật Server Local để test
+        print(f"\n🚀 Server đang chạy tại: http://127.0.0.1:{PORT}/locket.mobileconfig")
+        print("👉 Mở Safari trên iPad nhập link trên để cài đặt.")
+        with socketserver.TCPServer(("", PORT), Handler) as httpd:
+            httpd.serve_forever()
+    except Exception as e:
+        print(f"❌ Lỗi (Chắc chưa cài thư viện cryptography): {e}")
